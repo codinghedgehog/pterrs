@@ -74,8 +74,9 @@ if __name__ == '__main__':
     # The catch is that while ERR is unique, ERX needs to be paired up with the run_alias (which is the
     # file_id in the datasheet) which looks like SC_RUN_5150_1#0 (in datasheet, it is listed as 5150_1_0).
     #
-    # But we want to key off of ERX for the lookup, so to make it unique, need a key of ERX+RUN_ALIAS
-    # NOTE: This may be project-specific.
+    # But we want to key off of ERX for the lookup, so to make it unique, need a combined key of ERX+RUN_ALIAS
+    #
+    # NOTE: This may be project-specific, since RUN_ALIAS seems to be free form data.
     #
     req = urllib2.Request(ENB_FILEREPORT_URL.format(projectID))
     response = urllib2.urlopen(req)
@@ -106,9 +107,24 @@ if __name__ == '__main__':
     # Can query this information via a lookup of ERX on the EBI ENA site, which will
     # return XML with a list of ERS/File_ID (RUN_ALIAS) pairs, which can then be used
     # in erxDict to find the ERR number associated with it!
+    for erxNum in erxList:
+        req = urllib2.Request(ENB_URL.format(erxNum))
+        response = urllib2.urlopen(req)
+        erxXML = response.read()
 
-    print erxDict
-    print erxList
+        # Extract all the related ERS and run_alias (member_name attribute in XML)
+        # ERS ids are under /PROJECT_LINKS/PROJECT_LINK/XREF_LINK/<DB = 'ENA_SAMPLE'>/ID
+        erxXMLTree = xml.etree.ElementTree.fromstring(erxXML)
+
+        erxERSElements = erxXMLTree.findall(".//EXPERIMENT/DESIGN/SAMPLE_DESCRIPTOR/POOL/MEMBER")
+
+        # Each MEMBER element should have an accession attribute (ERS) and member_name (RUN_ALIAS/FILE_ID).
+        # Use that to create the lookup key to query in the erxDict to find the ERR ID!
+        print erxERSElements
+        
+
+    #print erxDict
+    #print erxList
 
     # NOTE: This is where the script becomes project specific, sadly.
     # We can convert the run_alias (SC_RUN_5150_1#0) to the datasheet file id field (5150_1_0)
