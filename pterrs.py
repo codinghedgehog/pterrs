@@ -115,20 +115,24 @@ if __name__ == '__main__':
         # Extract all the related ERS and run_alias (member_name attribute in XML)
         # ERS ids are under /PROJECT_LINKS/PROJECT_LINK/XREF_LINK/<DB = 'ENA_SAMPLE'>/ID
         erxXMLTree = xml.etree.ElementTree.fromstring(erxXML)
-
-        erxERSElements = erxXMLTree.findall(".//EXPERIMENT/DESIGN/SAMPLE_DESCRIPTOR/POOL/MEMBER")
+        ersElements = erxXMLTree.findall(".//EXPERIMENT/DESIGN/SAMPLE_DESCRIPTOR/POOL/MEMBER")
 
         # Each MEMBER element should have an accession attribute (ERS) and member_name (RUN_ALIAS/FILE_ID).
         # Use that to create the lookup key to query in the erxDict to find the ERR ID!
-        print erxERSElements
-        
+        for ersElement in ersElements:
+            ersAccession = ersElement.get('accession')
+            ersMemberName = ersElement.get('member_name')
 
-    #print erxDict
-    #print erxList
+            # Now form the look up key - ERX (not ERS!) + RUN_ALIAS - to get the associated ERR.
+            # NOTE: This part is project specific, depending on the RUN_ALIAS formatting.
+            erxDictKey = erxNum + 'SC_RUN_' + ersMemberName
+            try:
+                if erxDict[erxDictKey]:
+                    # For output, make member_name match the datasheet's File ID (no SC_RUN and 
+                    # convert # to _ in the RUN_ALIAS).
+                    fileID = re.sub('SC_RUN_','',ersMemberName)
+                    fileID = re.sub('#','_',fileID)
+                    print "{0}, File ID {1}: {2}".format(ersAccession, fileID, erxDict[erxDictKey])
+            except KeyError:
+                print "*** WARNING: No ERR found for {0} with file ID {1}".format(ersAccession,fileID)
 
-    # NOTE: This is where the script becomes project specific, sadly.
-    # We can convert the run_alias (SC_RUN_5150_1#0) to the datasheet file id field (5150_1_0)
-    # but this will change from project to project, yuck.
-    RUN_ALIAS = re.sub('SC_RUN_','',RUN_ALIAS)
-    RUN_ALIAS = re.sub('#','_',RUN_ALIAS)
-    # Now RUN_ALIAS resembles the File ID value in the datasheet.
